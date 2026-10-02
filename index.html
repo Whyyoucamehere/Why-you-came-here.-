@@ -4,8 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>...</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
 <style>
   html, body {
@@ -22,14 +20,12 @@
     justify-content: center;
     overflow-x: hidden;
     -webkit-font-smoothing: none;
-    font-smooth: never;
     image-rendering: pixelated;
     user-select: none;
   }
   #stage {
     max-width: 520px;
     padding: 40px 24px;
-    text-align: left;
     width: 100%;
     box-sizing: border-box;
   }
@@ -38,22 +34,67 @@
     max-width: 100%;
     margin: 26px auto 0;
     opacity: 0;
-    transition: opacity 2.5s ease;
+    transition: opacity 2s ease;
     image-rendering: pixelated;
-    filter: contrast(1.1);
   }
   #stage img.show { opacity: 1; }
-  .blink { animation: blink 1.4s infinite; }
-  @keyframes blink { 50% { opacity: 0; } }
-  .flicker { animation: flicker 4s infinite; }
-  @keyframes flicker {
-    0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { opacity: 1; }
-    20%, 22%, 24%, 55% { opacity: 0.2; }
-  }
   .dim { color: #888; }
   .red { color: #a00000; }
-  .hint { color: #aaa; font-size: 11px; margin-top: 24px; }
+  .hint { color: #aaa; font-size: 11px; margin-top: 18px; }
   .gap { display: block; height: 18px; }
+
+  .controls {
+    margin-top: 30px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .controls label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    letter-spacing: 2px;
+    font-size: 12px;
+  }
+  .controls input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border: 1px solid #000;
+    background: #fff;
+    cursor: pointer;
+    position: relative;
+    margin: 0;
+    flex-shrink: 0;
+  }
+  .controls input[type="checkbox"]:checked::after {
+    content: "";
+    position: absolute;
+    left: 3px; top: 0px;
+    width: 5px; height: 9px;
+    border-right: 1px solid #000;
+    border-bottom: 1px solid #000;
+    transform: rotate(45deg);
+  }
+  .controls button {
+    background: #fff;
+    border: 1px solid #000;
+    color: #000;
+    font-family: inherit;
+    font-size: 12px;
+    padding: 6px 16px;
+    cursor: pointer;
+    letter-spacing: 2px;
+  }
+  .controls button:disabled {
+    opacity: 0.2;
+    cursor: not-allowed;
+  }
+  .controls button:not(:disabled):active {
+    background: #000; color: #fff;
+  }
   input[type="text"] {
     background: #fff;
     border: none;
@@ -62,163 +103,190 @@
     font-family: inherit;
     font-size: 13px;
     padding: 6px 0;
-    text-align: left;
     letter-spacing: 3px;
     outline: none;
     margin-top: 14px;
     width: 160px;
+    text-align: center;
+    -webkit-appearance: none;
+    border-radius: 0;
   }
-  button {
-    background: #fff;
-    border: 1px solid #000;
-    color: #000;
-    font-family: inherit;
-    font-size: 12px;
-    padding: 8px 18px;
-    cursor: pointer;
-    margin-top: 14px;
-    letter-spacing: 2px;
+  .wrong { color: #a00000; margin-top: 14px; }
+  .blink { animation: blink 1.4s infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .flicker { animation: flicker 4s infinite; }
+  @keyframes flicker {
+    0%,19%,21%,23%,25%,54%,56%,100% { opacity: 1; }
+    20%,22%,24%,55% { opacity: 0.2; }
   }
-  button:active { background: #000; color: #fff; }
-  .wrong { color: #a00000; margin-top: 14px; letter-spacing: 1px; }
 </style>
 </head>
 <body>
 <div id="stage"></div>
 
 <script>
-/* ===============================
-   ARG STAGES
-   =============================== */
+const stageEl = document.getElementById('stage');
 
-const stage = document.getElementById('stage');
+/* ======================
+   СОСТОЯНИЕ
+   ====================== */
+let stage = parseInt(localStorage.getItem('argStage') || '1', 10);
+let solved = localStorage.getItem('argSolved') === '1';
 
-let visits = parseInt(localStorage.getItem('visits') || '0', 10) + 1;
-localStorage.setItem('visits', visits);
+if (solved && stage < 6) stage = 6;
 
-const now = Date.now();
-const last = parseInt(localStorage.getItem('lastVisit') || '0', 10);
-localStorage.setItem('lastVisit', now);
+function save() {
+  localStorage.setItem('argStage', String(stage));
+  localStorage.setItem('argSolved', solved ? '1' : '0');
+}
 
-const tooFast = last && (now - last) < 15000;
+function next() {
+  stage++;
+  save();
+  render();
+}
 
-/* ===============================
+/* ======================
    КОНТЕНТ
-   =============================== */
-
-const pages = {
-
-  1: `
-    <span class="dim">ты здесь.</span><br>
-    я знал, что ты придёшь.<span class="gap"></span>
-    не помнишь?<br>
-    это нормально.<br>
-    <span class="dim">они все сначала не помнят.</span>
-  `,
-
-  2: `
-    ты вернулся.<span class="gap"></span>
-    <span class="dim">я говорил тебе не возвращаться.</span><br>
-    <span class="blink">но ты здесь.</span><span class="gap"></span>
-    третий раз будет последним.
-  `,
-
-  3: `
-    хорошо.<span class="gap"></span>
-    посмотри на это.<span class="gap"></span>
-    <span class="hint">сохрани файл. открой. не глазами.</span>
-    <img id="img3" src="secret.png" alt="">
-  `,
-
-  4: `
-    ты снова здесь.<span class="gap"></span>
-    <span class="dim">зачем ты пришёл?</span><span class="gap"></span>
-    я же предупреждал.<br>
-    <span class="dim">четыре — не то, что ты ищешь.</span><span class="gap"></span>
-    <span class="red">вернись к третьему.</span>
-    <img id="img4" src="fake.png" alt="">
-  `,
-
-  5: `
-    ты нашёл.<span class="gap"></span>
-    теперь введи.<span class="gap"></span>
-    <input type="text" id="answer" autocomplete="off" spellcheck="false"><br>
-    <button id="submit">дальше</button>
-    <div id="feedback"></div>
-  `
-};
-
-const finalText = `
-  ты это сделал.<span class="gap"></span>
-  остальные — нет.<span class="gap"></span>
-  завтра ты забудешь.<br>
-  мы — нет.<span class="gap"></span>
-  <span class="dim">три — истина.</span><br>
-  <span class="dim">четыре — ложь.</span><span class="gap"></span>
-  <span class="flicker">ты выбрал правильно.</span>
-`;
-
-/* ===============================
-   ОТРИСОВКА
-   =============================== */
-
-const text = pages[visits] || finalText;
-stage.innerHTML = text;
-
-if (visits === 3) {
-  const img = document.getElementById('img3');
-  if (img) {
-    setTimeout(() => img.classList.add('show'), 700);
-    img.onerror = () => {
-      stage.innerHTML += `<div class="hint">файл не найден.</div>`;
-    };
-  }
+   ====================== */
+function controls() {
+  return `
+    <div class="controls">
+      <label><input type="checkbox" id="yes"> <span>да</span></label>
+      <button id="next" disabled>дальше</button>
+    </div>
+  `;
 }
 
-if (visits === 4) {
-  const img = document.getElementById('img4');
-  if (img) {
-    setTimeout(() => img.classList.add('show'), 700);
-    img.onerror = () => {
-      stage.innerHTML += `<div class="hint">файл не найден.</div>`;
-    };
+function render() {
+  let html = '';
+
+  if (stage === 1) {
+    html = `
+      ты здесь.<br>
+      я знал, что ты придёшь.<span class="gap"></span>
+      не помнишь?<br>
+      это нормально.<br>
+      <span class="dim">они все сначала не помнят.</span>
+      ${controls()}
+    `;
   }
-}
+  else if (stage === 2) {
+    html = `
+      ты вернулся.<span class="gap"></span>
+      <span class="dim">я говорил тебе не возвращаться.</span><br>
+      <span class="blink">но ты здесь.</span><span class="gap"></span>
+      третий раз будет последним.
+      ${controls()}
+    `;
+  }
+  else if (stage === 3) {
+    html = `
+      хорошо.<span class="gap"></span>
+      посмотри на это.<span class="gap"></span>
+      <span class="hint">сохрани файл. открой. не глазами.</span>
+      <img id="img3" src="secret.png" alt="">
+      ${controls()}
+    `;
+  }
+  else if (stage === 4) {
+    html = `
+      ты снова здесь.<span class="gap"></span>
+      <span class="dim">зачем ты пришёл?</span><span class="gap"></span>
+      я же предупреждал.<br>
+      <span class="dim">четыре — не то, что ты ищешь.</span><span class="gap"></span>
+      <span class="red">вернись к третьему.</span>
+      <img id="img4" src="fake.png" alt="">
+      ${controls()}
+    `;
+  }
+  else if (stage === 5) {
+    html = `
+      ты понял.<span class="gap"></span>
+      теперь введи слово.<span class="gap"></span>
+      <input type="text" id="answer" autocomplete="off" spellcheck="false">
+      <div id="feedback"></div>
+      <div class="controls">
+        <label><input type="checkbox" id="yes"> <span>да</span></label>
+        <button id="submit" disabled>проверить</button>
+      </div>
+    `;
+  }
+  else if (stage === 6) {
+    html = `
+      ты это сделал.<span class="gap"></span>
+      остальные — нет.<span class="gap"></span>
+      завтра ты забудешь.<br>
+      мы — нет.<span class="gap"></span>
+      <span class="dim">три — истина.</span><br>
+      <span class="dim">четыре — ложь.</span><span class="gap"></span>
+      <span class="flicker">ты выбрал правильно.</span>
+      ${controls()}
+    `;
+  }
+  else {
+    html = `<span class="dim">.</span>`;
+  }
 
-if (visits >= 5) {
-  const btn = document.getElementById('submit');
-  const input = document.getElementById('answer');
-  const fb = document.getElementById('feedback');
+  stageEl.innerHTML = html;
 
-  if (btn && input) {
-    btn.addEventListener('click', () => {
-      const val = input.value.trim().toUpperCase();
+  // Появление картинок
+  const img3 = document.getElementById('img3');
+  const img4 = document.getElementById('img4');
+  if (img3) setTimeout(() => img3.classList.add('show'), 500);
+  if (img4) setTimeout(() => img4.classList.add('show'), 500);
+
+  // Обработка чекбокса
+  const cb = document.getElementById('yes');
+  const btnNext = document.getElementById('next');
+  const btnSub = document.getElementById('submit');
+  const activeBtn = btnNext || btnSub;
+
+  if (cb && activeBtn) {
+    cb.addEventListener('change', () => {
+      activeBtn.disabled = !cb.checked;
+    });
+  }
+
+  if (btnNext) {
+    btnNext.addEventListener('click', next);
+  }
+
+  if (btnSub) {
+    const input = document.getElementById('answer');
+    const fb = document.getElementById('feedback');
+    btnSub.addEventListener('click', () => {
+      const val = (input.value || '').trim().toUpperCase();
       if (val === 'MOON' || val === 'ЛУНА') {
-        localStorage.setItem('solved', '1');
-        stage.innerHTML = finalText;
+        solved = true;
+        stage = 6;
+        save();
+        render();
       } else {
         fb.innerHTML = '<div class="wrong">это ложь.</div>';
         input.value = '';
+        cb.checked = false;
+        btnSub.disabled = true;
       }
     });
-
     input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') btn.click();
+      if (e.key === 'Enter' && !btnSub.disabled) btnSub.click();
     });
   }
-
-  if (localStorage.getItem('solved') === '1') {
-    stage.innerHTML = finalText;
-  }
 }
 
-/* ===============================
-   СБРОС: ?reset
-   =============================== */
+/* ======================
+   СБРОС ?reset
+   ====================== */
 if (location.search.includes('reset')) {
-  localStorage.clear();
-  stage.innerHTML = '<span class="dim">[сброшено]</span>';
+  localStorage.removeItem('argStage');
+  localStorage.removeItem('argSolved');
+  stage = 1;
+  solved = false;
+  history.replaceState(null, '', location.pathname);
 }
+
+render();
 </script>
 </body>
 </html>
