@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>...</title>
+<style>
+  html, body {
+    margin: 0;
+    min-height: 100%;
+    background: #0a0a0a;
+    color: #b8b8b8;
+    font-family: "Courier New", monospace;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow-x: hidden;
+    user-select: none;
+  }
+  #stage {
+    max-width: 640px;
+    padding: 40px 24px;
+    font-size: 18px;
+    line-height: 1.9;
+    letter-spacing: 0.4px;
+    text-align: center;
+  }
+  #stage img {
+    max-width: 100%;
+    margin-top: 28px;
+    opacity: 0;
+    transition: opacity 2.5s ease;
+    filter: contrast(1.05) brightness(0.92);
+  }
+  #stage img.show { opacity: 1; }
+  .blink { animation: blink 1.4s infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .flicker { animation: flicker 4s infinite; }
+  @keyframes flicker {
+    0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { opacity: 1; }
+    20%, 22%, 24%, 55% { opacity: 0.35; }
+  }
+  .dim { color: #555; }
+  .red { color: #7a1010; }
+  .hint { color: #3a3a3a; font-size: 13px; margin-top: 30px; }
+  input[type="text"] {
+    background: transparent;
+    border: 1px solid #333;
+    color: #ccc;
+    font-family: inherit;
+    font-size: 18px;
+    padding: 10px 14px;
+    text-align: center;
+    letter-spacing: 3px;
+    outline: none;
+    margin-top: 20px;
+    width: 200px;
+  }
+  input[type="text"]:focus { border-color: #666; }
+  button {
+    background: transparent;
+    border: 1px solid #333;
+    color: #888;
+    font-family: inherit;
+    font-size: 16px;
+    padding: 10px 20px;
+    cursor: pointer;
+    margin-top: 14px;
+    letter-spacing: 2px;
+  }
+  button:hover { border-color: #666; color: #ccc; }
+  .wrong { color: #7a1010; margin-top: 16px; letter-spacing: 1px; }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+
+<script>
+/* ===============================
+   ARG STAGES
+   =============================== */
+
+const stage = document.getElementById('stage');
+
+let visits = parseInt(localStorage.getItem('visits') || '0', 10) + 1;
+localStorage.setItem('visits', visits);
+
+const now = Date.now();
+const last = parseInt(localStorage.getItem('lastVisit') || '0', 10);
+localStorage.setItem('lastVisit', now);
+
+const tooFast = last && (now - last) < 15000;
+
+/* ===============================
+   КОНТЕНТ
+   =============================== */
+
+const pages = {
+
+  1: `
+    Привет.<br>
+    Зачем ты пришёл сюда?<br><br>
+    <span class="dim">Ты не помнишь. Я знаю.</span>
+  `,
+
+  2: `
+    Ты вернулся.<br><br>
+    Я говорил тебе не возвращаться.<br>
+    <span class="blink dim">...</span>
+  `,
+
+  3: `
+    Хорошо.<br>
+    Посмотри на это.<br><br>
+    <span class="dim" style="font-size:14px">
+      сохрани файл. посмотри ближе.<br>
+      не глазами.
+    </span>
+    <img id="img3" src="secret.png" alt="">
+  `,
+
+  4: `
+    Ты уже видел это.<br><br>
+    <span class="dim">но это — четвёртая.</span><br>
+    <span class="red">четыре — ложь.</span><br><br>
+    <span class="dim">вернись к третьей.</span>
+    <img id="img4" src="fake.png" alt="">
+  `,
+
+  5: `
+    Ты нашёл это.<br><br>
+    Введи слово.<br><br>
+    <input type="text" id="answer" autocomplete="off" spellcheck="false">
+    <br>
+    <button id="submit">проверить</button>
+    <div id="feedback"></div>
+  `
+};
+
+/* ===============================
+   ФИНАЛ
+   =============================== */
+
+const finalText = `
+  Ты решил.<br><br>
+  Большинство — нет.<br><br>
+  Завтра ты это не вспомнишь.<br>
+  Но мы запомним тебя.<br><br>
+  <span class="dim">Три — истина. Четыре — ложь.</span><br>
+  <span class="dim">Ты выбрал три.</span><br><br>
+  <span class="flicker">Хорошо.</span>
+`;
+
+/* ===============================
+   ОТРИСОВКА
+   =============================== */
+
+const text = pages[visits] || finalText;
+stage.innerHTML = text;
+
+// Плавное появление картинок
+if (visits === 3) {
+  const img = document.getElementById('img3');
+  if (img) {
+    setTimeout(() => img.classList.add('show'), 700);
+    img.onerror = () => {
+      stage.innerHTML += `<div class="hint">файл не найден.</div>`;
+    };
+  }
+}
+
+if (visits === 4) {
+  const img = document.getElementById('img4');
+  if (img) {
+    setTimeout(() => img.classList.add('show'), 700);
+    img.onerror = () => {
+      stage.innerHTML += `<div class="hint">файл не найден.</div>`;
+    };
+  }
+}
+
+// Проверка ответа на 5-й стадии
+if (visits >= 5) {
+  const btn = document.getElementById('submit');
+  const input = document.getElementById('answer');
+  const fb = document.getElementById('feedback');
+
+  if (btn && input) {
+    btn.addEventListener('click', () => {
+      const val = input.value.trim().toUpperCase();
+      if (val === 'MOON' || val === 'ЛУНА') {
+        localStorage.setItem('solved', '1');
+        stage.innerHTML = finalText;
+      } else {
+        fb.innerHTML = '<div class="wrong">четыре — ложь.</div>';
+        input.value = '';
+      }
+    });
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') btn.click();
+    });
+  }
+
+  // Уже решил — сразу финал
+  if (localStorage.getItem('solved') === '1') {
+    stage.innerHTML = finalText;
+  }
+}
+
+/* ===============================
+   СБРОС: index.html?reset
+   =============================== */
+if (location.search.includes('reset')) {
+  localStorage.clear();
+  stage.innerHTML = '<span class="dim">[сброшено]</span>';
+}
+</script>
+</body>
+</html>
